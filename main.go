@@ -2,62 +2,31 @@ package main
 
 import (
 	"fmt"
-	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/libp2p/go-libp2p"
 )
 
 func main() {
-	serverAddr, err := net.ResolveUDPAddr("udp", "54.167.69.227:53")
+	// start a libp2p node with default settings
+	node, err := libp2p.New()
 	if err != nil {
-		fmt.Println("Error resolving server address:", err.Error())
-		return
-	} else {
-		fmt.Println(serverAddr)
+		panic(err)
 	}
 
-	serverConn, err := net.ListenUDP("udp", serverAddr)
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		return
-	} else {
-		fmt.Println(serverConn)
+	// print the node's listening addresses
+	fmt.Println("Listen addresses:", node.Addrs())
+
+	// wait for a SIGINT or SIGTERM signal
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	<-ch
+	fmt.Println("Received signal, shutting down...")
+
+	// shut the node down
+	if err := node.Close(); err != nil {
+		panic(err)
 	}
-	defer serverConn.Close()
-
-	fmt.Println("Server started")
-
-	go func() {
-		buffer := make([]byte, 1024)
-		for {
-			n, addr, err := serverConn.ReadFromUDP(buffer)
-			if err != nil {
-				fmt.Println("Error reading:", err.Error())
-				continue
-			}
-			fmt.Printf("Received message from %s: %s\n", addr, string(buffer[:n]))
-		}
-	}()
-
-	// Start UDP client
-	clientAddr, err := net.ResolveUDPAddr("udp", "localhost:0")
-	if err != nil {
-		fmt.Println("Error resolving client address:", err.Error())
-		return
-	}
-
-	clientConn, err := net.DialUDP("udp", nil, clientAddr)
-	if err != nil {
-		fmt.Println("Error connecting:", err.Error())
-		return
-	}
-	defer clientConn.Close()
-
-	// Send message to server
-	message := []byte("Hello from client")
-	_, err = clientConn.Write(message)
-	if err != nil {
-		fmt.Println("Error sending:", err.Error())
-		return
-	}
-	fmt.Println("Message sent")
-	select {}
 }
