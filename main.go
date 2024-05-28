@@ -7,26 +7,27 @@ import (
 	"syscall"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/multiformats/go-multiaddr"
 )
 
+const chatProtocolID = "/chat/1.0.0"
+
 func main() {
-	// start a libp2p node with default settings
-	node, err := libp2p.New()
+	node, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"))
 	if err != nil {
 		panic(err)
 	}
+	defer node.Close()
+	fmt.Println(node.ID(), " : ", node.Addrs())
 
-	// print the node's listening addresses
-	fmt.Println("Listen addresses:", node.Addrs())
+	peerMA, err := multiaddr.NewMultiaddr(node.Addrs()[0].String())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(peerMA)
 
-	// wait for a SIGINT or SIGTERM signal
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	<-ch
 	fmt.Println("Received signal, shutting down...")
-
-	// shut the node down
-	if err := node.Close(); err != nil {
-		panic(err)
-	}
 }
