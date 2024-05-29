@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/routing"
 	drouter "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -28,24 +29,22 @@ func main() {
 	}
 	defer db.Close()
 
-	host, dhti := initHost(db, "bvvinai", "bvvinai@1357")
+	host, dhti, rd := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
 	defer dhti.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	//connectToPeer(host, dhti, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
+	connectToPeer(host, dhti, rd, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
 }
 
-func connectToPeer(h host.Host, dhti *dht.IpfsDHT, peerid string) {
+func connectToPeer(h host.Host, dhti *dht.IpfsDHT, rd *drouter.RoutingDiscovery, peerid string) {
 
-	routingDiscovery := drouter.NewRoutingDiscovery(dhti)
-	peerChan, err := routingDiscovery.FindPeers(context.Background(), "libp2p-bootstrap")
+	peerChan, err := rd.FindPeers(context.Background(), peerid)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(peerChan)
 	for peer := range peerChan {
 		fmt.Println("Found peer:", peer)
 	}
@@ -65,7 +64,7 @@ func connectToPeer(h host.Host, dhti *dht.IpfsDHT, peerid string) {
 	// fmt.Println("Connected to remote peer:", peerid)
 }
 
-func initHost(db *badger.DB, username string, password string) (host.Host, *dht.IpfsDHT) {
+func initHost(db *badger.DB, username string, password string) (host.Host, *dht.IpfsDHT, *drouter.RoutingDiscovery) {
 
 	connmgr, err := connmgr.NewConnManager(
 		100,
@@ -129,7 +128,7 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err := dht.Bootstrap(context.Background()); err != nil {
 			panic(err)
 		}
-		return host, dht
+		return host, dht, nil
 	} else {
 		var dhti *dht.IpfsDHT
 		host, err := libp2p.New(
@@ -155,6 +154,9 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err != nil {
 			panic(err)
 		}
-		return host, dhti
+
+		routingDiscovery := drouter.NewRoutingDiscovery(dhti)
+		dutil.Advertise(context.Background(), routingDiscovery, string(host.ID().String()))
+		return host, dhti, routingDiscovery
 	}
 }
