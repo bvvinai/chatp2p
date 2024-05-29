@@ -41,7 +41,7 @@ func main() {
 
 func connectToPeer(h host.Host, dhti *dht.IpfsDHT, rd *drouter.RoutingDiscovery, peerid string) {
 
-	peerChan, err := rd.FindPeers(context.Background(), peerid)
+	peerChan, err := rd.FindPeers(context.Background(), "libp2p-chatapp")
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +156,7 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		}
 
 		routingDiscovery := drouter.NewRoutingDiscovery(dhti)
-		dutil.Advertise(context.Background(), routingDiscovery, string(host.ID().String()))
+		dutil.Advertise(context.Background(), routingDiscovery, "libp2p-chatapp")
 		return host, dhti, routingDiscovery
 	}
 }
