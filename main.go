@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/libp2p/go-libp2p"
@@ -10,6 +11,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,7 +29,7 @@ func main() {
 	host, dht := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
 	defer dht.Close()
-	fmt.Println(host.Addrs())
+	fmt.Println(host.ID())
 	//connectToPeer(host, dht, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
@@ -127,6 +130,9 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err := dht.Bootstrap(context.Background()); err != nil {
 			panic(err)
 		}
+		time.Sleep(1 * time.Second)
+		routingDiscovery := drouting.NewRoutingDiscovery(dht)
+		dutil.Advertise(context.Background(), routingDiscovery, "meet me here vinai")
 		return host, dht
 	}
 }
