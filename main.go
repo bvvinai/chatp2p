@@ -33,7 +33,7 @@ func main() {
 	defer dhti.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	//connectToPeer(host, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
+	connectToPeer(host, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
 }
