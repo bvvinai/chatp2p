@@ -130,12 +130,9 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 			libp2p.Security(noise.ID, noise.New),
 			libp2p.DefaultTransports,
 			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-				bootstrapPeers := make([]peer.AddrInfo, len(dht.DefaultBootstrapPeers))
-				for i, addr := range dht.DefaultBootstrapPeers {
-					peerinfo, _ := peer.AddrInfoFromP2pAddr(addr)
-					bootstrapPeers[i] = *peerinfo
-				}
-				dhti, err = dht.New(context.Background(), h, dht.BootstrapPeers(bootstrapPeers...))
+				var options []dht.Option
+				options = append(options, dht.Mode(dht.ModeServer))
+				dhti, err = dht.New(context.Background(), h, options...)
 				if err := dhti.Bootstrap(context.Background()); err != nil {
 					panic(err)
 				}
