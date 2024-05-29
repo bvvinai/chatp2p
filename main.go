@@ -6,10 +6,10 @@ import (
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/libp2p/go-libp2p"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,34 +23,31 @@ func main() {
 	}
 	defer db.Close()
 
-	host := initHost(db, "bvvinai", "bvvinai@1357")
+	host, dht := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
+	defer dht.Close()
 	fmt.Println(host.ID())
-	//connectToPeer(host, "12D3KooWB9yESfsWrWnY3Nn2bZfyvET8ZG7JBDqRpUjDaBnqNymC")
+	//connectToPeer(host, dht, "12D3KooWB9yESfsWrWnY3Nn2bZfyvET8ZG7JBDqRpUjDaBnqNymC")
 
 	select {}
 }
 
-func connectToPeer(h host.Host, peerid string) {
-	remotePeerAddrStr := "/ip4/54.209.93.91/tcp/13000/p2p/" + peerid
-	remoteAddr, err := multiaddr.NewMultiaddr(remotePeerAddrStr)
-	if err != nil {
-		panic(err)
-	}
-	remotePeerInfo, err := peer.AddrInfoFromP2pAddr(remoteAddr)
+func connectToPeer(h host.Host, dht *dht.IpfsDHT, peerid string) {
+
+	peerInfo, err := dht.FindPeer(context.Background(), peer.ID(peerid))
 	if err != nil {
 		panic(err)
 	}
 
 	// Connect to the remote peer
-	if err := h.Connect(context.Background(), *remotePeerInfo); err != nil {
+	if err := h.Connect(context.Background(), peerInfo); err != nil {
 		panic(err)
 	}
 
 	fmt.Println("Connected to remote peer:", peerid)
 }
 
-func initHost(db *badger.DB, username string, password string) host.Host {
+func initHost(db *badger.DB, username string, password string) (host.Host, *dht.IpfsDHT) {
 
 	var hostKey crypto.PrivKey
 	get_err := db.View(func(txn *badger.Txn) error {
@@ -99,12 +96,28 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 		txn.Set([]byte("priv"), privBytes)
 		txn.Set([]byte("peerid"), []byte(host.ID()))
 		txn.Commit()
-		return host
+		dht, err := dht.New(context.Background(), host)
+		if err != nil {
+			panic(err)
+		}
+		defer dht.Close()
+		if err := dht.Bootstrap(context.Background()); err != nil {
+			panic(err)
+		}
+		return host, dht
 	} else {
 		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"), libp2p.Identity(hostKey))
 		if err != nil {
 			panic(err)
 		}
-		return host
+		dht, err := dht.New(context.Background(), host)
+		if err != nil {
+			panic(err)
+		}
+		defer dht.Close()
+		if err := dht.Bootstrap(context.Background()); err != nil {
+			panic(err)
+		}
+		return host, dht
 	}
 }
