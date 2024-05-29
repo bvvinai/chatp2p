@@ -11,6 +11,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/routing"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/security/noise"
+	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -24,28 +28,22 @@ func main() {
 	}
 	defer db.Close()
 
-	host, dht := initHost(db, "bvvinai", "bvvinai@1357")
+	host, dhti := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
-	defer dht.Close()
+	defer dhti.Close()
 	fmt.Println(host.ID())
-	//connectToPeer(host, dht, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
+	//connectToPeer(host, dhti, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
 }
 
-func connectToPeer(h host.Host, dht *dht.IpfsDHT, peerid string) {
-	// routingDiscovery := routing.NewRoutingDiscovery(dht)
-	// peerChan, err := routingDiscovery.FindPeers(context.Background(), "meet me here vinai")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(peerChan)
+func connectToPeer(h host.Host, dhti *dht.IpfsDHT, peerid string) {
 
 	peerID, err := peer.Decode(peerid)
 	if err != nil {
 		panic(err)
 	}
-	peerInfo, err := dht.FindPeer(context.Background(), peerID)
+	peerInfo, err := dhti.FindPeer(context.Background(), peerID)
 	if err != nil {
 		panic(err)
 	}
@@ -58,6 +56,14 @@ func connectToPeer(h host.Host, dht *dht.IpfsDHT, peerid string) {
 
 func initHost(db *badger.DB, username string, password string) (host.Host, *dht.IpfsDHT) {
 
+	connmgr, err := connmgr.NewConnManager(
+		100,
+		400,
+		connmgr.WithGracePeriod(time.Minute),
+	)
+	if err != nil {
+		panic(err)
+	}
 	var hostKey crypto.PrivKey
 	get_err := db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte("priv"))
@@ -105,12 +111,7 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		txn.Set([]byte("priv"), privBytes)
 		txn.Set([]byte("peerid"), []byte(host.ID()))
 		txn.Commit()
-		bootstrapPeers := make([]peer.AddrInfo, len(dht.DefaultBootstrapPeers))
-		for i, addr := range dht.DefaultBootstrapPeers {
-			peerinfo, _ := peer.AddrInfoFromP2pAddr(addr)
-			bootstrapPeers[i] = *peerinfo
-		}
-		dht, err := dht.New(context.Background(), host, dht.BootstrapPeers(bootstrapPeers...))
+		dht, err := dht.New(context.Background(), host)
 		if err != nil {
 			panic(err)
 		}
@@ -119,20 +120,26 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		}
 		return host, dht
 	} else {
-		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"), libp2p.Identity(hostKey))
+		var dhti *dht.IpfsDHT
+		host, err := libp2p.New(
+			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"),
+			libp2p.Identity(hostKey),
+			libp2p.NATPortMap(),
+			libp2p.ConnectionManager(connmgr),
+			libp2p.Security(libp2ptls.ID, libp2ptls.New),
+			libp2p.Security(noise.ID, noise.New),
+			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
+				dhti, err = dht.New(context.Background(), h)
+				if err := dhti.Bootstrap(context.Background()); err != nil {
+					panic(err)
+				}
+				return dhti, err
+			}),
+		)
 		if err != nil {
 			panic(err)
 		}
-		dht, err := dht.New(context.Background(), host)
-		if err != nil {
-			panic(err)
-		}
-		if err := dht.Bootstrap(context.Background()); err != nil {
-			panic(err)
-		}
-		time.Sleep(5 * time.Second)
-		// routingDiscovery := routing.NewRoutingDiscovery(dht)
-		// dutil.Advertise(context.Background(), routingDiscovery, "unanimous-chat-app")
-		return host, dht
+		time.Sleep(1 * time.Second)
+		return host, dhti
 	}
 }
