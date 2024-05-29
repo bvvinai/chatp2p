@@ -26,7 +26,7 @@ func main() {
 	host, dht := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
 	defer dht.Close()
-	fmt.Println(host.ID())
+	fmt.Println(host.Addrs())
 	//connectToPeer(host, dht, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
@@ -41,7 +41,6 @@ func connectToPeer(h host.Host, dht *dht.IpfsDHT, peerid string) {
 	if err != nil {
 		panic(err)
 	}
-
 	if err := h.Connect(context.Background(), peerInfo); err != nil {
 		panic(err)
 	}
@@ -98,7 +97,12 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		txn.Set([]byte("priv"), privBytes)
 		txn.Set([]byte("peerid"), []byte(host.ID()))
 		txn.Commit()
-		dht, err := dht.New(context.Background(), host)
+		bootstrapPeers := make([]peer.AddrInfo, len(dht.DefaultBootstrapPeers))
+		for i, addr := range dht.DefaultBootstrapPeers {
+			peerinfo, _ := peer.AddrInfoFromP2pAddr(addr)
+			bootstrapPeers[i] = *peerinfo
+		}
+		dht, err := dht.New(context.Background(), host, dht.BootstrapPeers(bootstrapPeers...))
 		if err != nil {
 			panic(err)
 		}
@@ -111,7 +115,12 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err != nil {
 			panic(err)
 		}
-		dht, err := dht.New(context.Background(), host)
+		bootstrapPeers := make([]peer.AddrInfo, len(dht.DefaultBootstrapPeers))
+		for i, addr := range dht.DefaultBootstrapPeers {
+			peerinfo, _ := peer.AddrInfoFromP2pAddr(addr)
+			bootstrapPeers[i] = *peerinfo
+		}
+		dht, err := dht.New(context.Background(), host, dht.BootstrapPeers(bootstrapPeers...))
 		if err != nil {
 			panic(err)
 		}
