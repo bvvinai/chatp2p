@@ -32,22 +32,23 @@ func main() {
 	defer host.Close()
 	defer dhti.Close()
 	fmt.Println(host.ID())
-	//connectToPeer(host, dhti, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
+	fmt.Println("Listening on : ", host.Addrs())
+	//connectToPeer(host, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
 }
 
-func connectToPeer(h host.Host, dhti *dht.IpfsDHT, peerid string) {
-
-	peerID, err := peer.Decode(peerid)
+func connectToPeer(h host.Host, peerid string) {
+	fmt.Println("Connecting to peer : " + peerid)
+	// peerID, err := peer.Decode(peerid)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	bootstrapAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/4001/p2p/" + peerid)
 	if err != nil {
 		panic(err)
 	}
-	peerInfo, err := dhti.FindPeer(context.Background(), peerID)
-	if err != nil {
-		panic(err)
-	}
-	if err := h.Connect(context.Background(), peerInfo); err != nil {
+	if err := h.Connect(context.Background(), *bootstrapAddr); err != nil {
 		panic(err)
 	}
 
@@ -122,7 +123,7 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 	} else {
 		var dhti *dht.IpfsDHT
 		host, err := libp2p.New(
-			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"),
+			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"),
 			libp2p.Identity(hostKey),
 			libp2p.ConnectionManager(connmgr),
 			libp2p.EnableNATService(),
@@ -130,18 +131,15 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 			libp2p.Security(libp2ptls.ID, libp2ptls.New),
 			libp2p.Security(noise.ID, noise.New),
 			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-				dhti, err = dht.New(context.Background(), h, dht.Mode(dht.ModeAutoServer))
+				dhti, err = dht.New(context.Background(), h)
 				if err != nil {
 					return nil, err
 				}
 
-				for _, addr := range dht.DefaultBootstrapPeers {
-					pi, _ := peer.AddrInfoFromP2pAddr(addr)
-					fmt.Println(pi)
-					if err := h.Connect(context.Background(), *pi); err != nil {
-						fmt.Printf("Failed to bootstrap to %s: %s\n", addr, err)
-					}
+				if err := dhti.Bootstrap(context.Background()); err != nil {
+					panic(err)
 				}
+
 				return dhti, nil
 			}),
 		)
