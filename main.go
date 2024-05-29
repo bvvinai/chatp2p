@@ -27,19 +27,21 @@ func main() {
 	defer host.Close()
 	defer dht.Close()
 	fmt.Println(host.ID())
-	//connectToPeer(host, dht, "12D3KooWB9yESfsWrWnY3Nn2bZfyvET8ZG7JBDqRpUjDaBnqNymC")
+	//connectToPeer(host, dht, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
 }
 
 func connectToPeer(h host.Host, dht *dht.IpfsDHT, peerid string) {
-
-	peerInfo, err := dht.FindPeer(context.Background(), peer.ID(peerid))
+	peerID, err := peer.Decode(peerid)
+	if err != nil {
+		panic(err)
+	}
+	peerInfo, err := dht.FindPeer(context.Background(), peerID)
 	if err != nil {
 		panic(err)
 	}
 
-	// Connect to the remote peer
 	if err := h.Connect(context.Background(), peerInfo); err != nil {
 		panic(err)
 	}
@@ -100,7 +102,6 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err != nil {
 			panic(err)
 		}
-		defer dht.Close()
 		if err := dht.Bootstrap(context.Background()); err != nil {
 			panic(err)
 		}
@@ -114,7 +115,6 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err != nil {
 			panic(err)
 		}
-		defer dht.Close()
 		if err := dht.Bootstrap(context.Background()); err != nil {
 			panic(err)
 		}
