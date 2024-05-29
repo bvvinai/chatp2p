@@ -25,7 +25,7 @@ func main() {
 
 	host := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
-	fmt.Println(host.Addrs())
+	fmt.Println(host.ID())
 	//connectToPeer(host, "12D3KooWB9yESfsWrWnY3Nn2bZfyvET8ZG7JBDqRpUjDaBnqNymC")
 
 	select {}
@@ -85,7 +85,7 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			panic(err)
 		}
 
-		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/13000"), libp2p.Identity(priv))
+		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"), libp2p.Identity(priv))
 		if err != nil {
 			panic(err)
 		}
@@ -101,7 +101,7 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 		txn.Commit()
 		return host
 	} else {
-		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/13000"), libp2p.Identity(hostKey))
+		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"), libp2p.Identity(hostKey))
 		if err != nil {
 			panic(err)
 		}
