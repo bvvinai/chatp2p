@@ -25,6 +25,7 @@ func main() {
 
 	host := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
+	fmt.Println(host.Addrs())
 	//connectToPeer(host, "12D3KooWB9yESfsWrWnY3Nn2bZfyvET8ZG7JBDqRpUjDaBnqNymC")
 
 	select {}
