@@ -33,22 +33,21 @@ func main() {
 	defer dhti.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	//connectToPeer(host, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
+	//connectToPeer(host, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
 }
 
 func connectToPeer(h host.Host, peerid string) {
-	fmt.Println("Connecting to peer : " + peerid)
 	// peerID, err := peer.Decode(peerid)
 	// if err != nil {
 	// 	panic(err)
 	// }
-	bootstrapAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/4001/p2p/" + peerid)
+	peerAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/50805/p2p/" + peerid)
 	if err != nil {
 		panic(err)
 	}
-	if err := h.Connect(context.Background(), *bootstrapAddr); err != nil {
+	if err := h.Connect(context.Background(), *peerAddr); err != nil {
 		panic(err)
 	}
 
