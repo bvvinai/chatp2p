@@ -137,6 +137,7 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 
 				for _, addr := range dht.DefaultBootstrapPeers {
 					pi, _ := peer.AddrInfoFromP2pAddr(addr)
+					fmt.Println(pi)
 					if err := h.Connect(context.Background(), *pi); err != nil {
 						fmt.Printf("Failed to bootstrap to %s: %s\n", addr, err)
 					}
