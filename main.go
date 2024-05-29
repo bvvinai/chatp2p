@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,7 +10,9 @@ import (
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,15 +20,14 @@ import (
 
 func main() {
 
-	hostID, err := getUserDetails()
-	if err != nil || hostID == "" {
-		fmt.Println(err)
-		initHost("vinai", "bvvinai")
-	} else {
-		fmt.Printf("PeerID: %s\n", hostID)
+	db, err := badger.Open(badger.DefaultOptions("./badger"))
+	if err != nil {
+		panic(err)
 	}
+	defer db.Close()
 
-	//initHost("bvvinai", "bvvinai@1357")
+	host := initHost(db, "bvvinai", "bvvinai@1357")
+	connectToPeer(host, host.ID().String())
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
@@ -33,68 +35,81 @@ func main() {
 	fmt.Println("Received signal, shutting down...")
 }
 
-func getUserDetails() (peer.ID, error) {
-	db, err := badger.Open(badger.DefaultOptions("./badger"))
+func connectToPeer(h host.Host, peerid string) {
+	remotePeerAddrStr := "/ip4/54.209.93.91/tcp/13000/p2p/" + peerid
+	remoteAddr, err := multiaddr.NewMultiaddr(remotePeerAddrStr)
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	remotePeerInfo, err := peer.AddrInfoFromP2pAddr(remoteAddr)
+	if err != nil {
+		panic(err)
+	}
 
-	var peerID string
+	// Connect to the remote peer
+	if err := h.Connect(context.Background(), *remotePeerInfo); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Connected to remote peer:", peerid)
+}
+
+func initHost(db *badger.DB, username string, password string) host.Host {
+
+	var hostKey crypto.PrivKey
 	get_err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("peerid"))
+		item, err := txn.Get([]byte("priv"))
 		if err != nil {
 			return err
 		}
 		err = item.Value(func(val []byte) error {
-			peerID = string(val)
+			hostKey, err = crypto.UnmarshalPrivateKey(val)
 			return nil
 		})
 		return err
 	})
-	return peer.ID(peerID), get_err
-}
 
-func initHost(username, password string) {
+	if get_err != nil || hostKey == nil {
+		fmt.Println(get_err)
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			panic(err)
+		}
+
+		priv, _, err := crypto.GenerateKeyPair(
+			crypto.Ed25519,
+			-1,
+		)
+		if err != nil {
+			panic(err)
+		}
+		privBytes, err := crypto.MarshalPrivateKey(priv)
+		if err != nil {
+			panic(err)
+		}
+
+		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/13000"), libp2p.Identity(priv))
+		if err != nil {
+			panic(err)
+		}
+		defer host.Close()
+
+		txn := db.NewTransaction(true)
+		defer txn.Discard()
+
+		txn.Set([]byte("username"), []byte(username))
+		txn.Set([]byte("password"), hashedPassword)
+		txn.Set([]byte("priv"), privBytes)
+		txn.Set([]byte("peerid"), []byte(host.ID()))
+		txn.Commit()
+		return host
+	} else {
+		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/13000"), libp2p.Identity(hostKey))
+		if err != nil {
+			panic(err)
+		}
+		defer host.Close()
+		return host
 	}
-
-	priv, _, err := crypto.GenerateKeyPair(
-		crypto.Ed25519,
-		-1,
-	)
-	if err != nil {
-		panic(err)
-	}
-	privBytes, err := crypto.MarshalPrivateKey(priv)
-	if err != nil {
-		panic(err)
-	}
-
-	host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0"), libp2p.Identity(priv))
-	if err != nil {
-		panic(err)
-	}
-	defer host.Close()
-	fmt.Println(hashedPassword)
-	fmt.Println(priv)
-	fmt.Println(host.ID())
-
-	db, err := badger.Open(badger.DefaultOptions("./badger"))
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	txn := db.NewTransaction(true)
-	defer txn.Discard()
-
-	txn.Set([]byte("username"), []byte(username))
-	txn.Set([]byte("password"), hashedPassword)
-	txn.Set([]byte("priv"), privBytes)
-	txn.Set([]byte("peerid"), []byte(host.ID()))
-	txn.Commit()
 }
