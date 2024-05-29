@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/libp2p/go-libp2p"
@@ -27,12 +24,10 @@ func main() {
 	defer db.Close()
 
 	host := initHost(db, "bvvinai", "bvvinai@1357")
-	connectToPeer(host, host.ID().String())
+	defer host.Close()
+	//connectToPeer(host, "12D3KooWB9yESfsWrWnY3Nn2bZfyvET8ZG7JBDqRpUjDaBnqNymC")
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	<-ch
-	fmt.Println("Received signal, shutting down...")
+	select {}
 }
 
 func connectToPeer(h host.Host, peerid string) {
@@ -109,7 +104,6 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 		if err != nil {
 			panic(err)
 		}
-		defer host.Close()
 		return host
 	}
 }
