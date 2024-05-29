@@ -10,8 +10,8 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
+	drouter "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -33,25 +33,36 @@ func main() {
 	defer dhti.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	connectToPeer(host, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
+	//connectToPeer(host, dhti, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
 }
 
-func connectToPeer(h host.Host, peerid string) {
+func connectToPeer(h host.Host, dhti *dht.IpfsDHT, peerid string) {
+
+	routingDiscovery := drouter.NewRoutingDiscovery(dhti)
+	peerChan, err := routingDiscovery.FindPeers(context.Background(), "libp2p-bootstrap")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(peerChan)
+	for peer := range peerChan {
+		fmt.Println("Found peer:", peer)
+	}
+
 	// peerID, err := peer.Decode(peerid)
 	// if err != nil {
 	// 	panic(err)
 	// }
-	peerAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/50805/p2p/" + peerid)
-	if err != nil {
-		panic(err)
-	}
-	if err := h.Connect(context.Background(), *peerAddr); err != nil {
-		panic(err)
-	}
+	// peerAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/50805/p2p/" + peerid)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// if err := h.Connect(context.Background(), *peerAddr); err != nil {
+	// 	panic(err)
+	// }
 
-	fmt.Println("Connected to remote peer:", peerid)
+	// fmt.Println("Connected to remote peer:", peerid)
 }
 
 func initHost(db *badger.DB, username string, password string) (host.Host, *dht.IpfsDHT) {
@@ -122,7 +133,7 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 	} else {
 		var dhti *dht.IpfsDHT
 		host, err := libp2p.New(
-			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"),
+			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/12000"),
 			libp2p.Identity(hostKey),
 			libp2p.ConnectionManager(connmgr),
 			libp2p.EnableNATService(),
@@ -138,7 +149,6 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 				if err := dhti.Bootstrap(context.Background()); err != nil {
 					panic(err)
 				}
-
 				return dhti, nil
 			}),
 		)
