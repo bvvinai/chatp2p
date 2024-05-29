@@ -124,27 +124,28 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		host, err := libp2p.New(
 			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"),
 			libp2p.Identity(hostKey),
-			libp2p.NATPortMap(),
 			libp2p.ConnectionManager(connmgr),
+			libp2p.EnableNATService(),
+			libp2p.NATPortMap(),
 			libp2p.Security(libp2ptls.ID, libp2ptls.New),
 			libp2p.Security(noise.ID, noise.New),
-			libp2p.DefaultTransports,
 			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-				dhti, err = dht.New(context.Background(), h)
-				if err := dhti.Bootstrap(context.Background()); err != nil {
-					panic(err)
+				dhti, err = dht.New(context.Background(), h, dht.Mode(dht.ModeAutoServer))
+				if err != nil {
+					return nil, err
 				}
-				return dhti, err
+
+				for _, addr := range dht.DefaultBootstrapPeers {
+					pi, _ := peer.AddrInfoFromP2pAddr(addr)
+					if err := h.Connect(context.Background(), *pi); err != nil {
+						fmt.Printf("Failed to bootstrap to %s: %s\n", addr, err)
+					}
+				}
+				return dhti, nil
 			}),
-			libp2p.EnableNATService(),
 		)
 		if err != nil {
 			panic(err)
-		}
-		time.Sleep(1 * time.Second)
-		for _, addr := range dht.DefaultBootstrapPeers {
-			pi, _ := peer.AddrInfoFromP2pAddr(addr)
-			host.Connect(context.Background(), *pi)
 		}
 		return host, dhti
 	}
