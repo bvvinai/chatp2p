@@ -11,8 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,6 +34,13 @@ func main() {
 }
 
 func connectToPeer(h host.Host, dht *dht.IpfsDHT, peerid string) {
+	// routingDiscovery := routing.NewRoutingDiscovery(dht)
+	// peerChan, err := routingDiscovery.FindPeers(context.Background(), "meet me here vinai")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(peerChan)
+
 	peerID, err := peer.Decode(peerid)
 	if err != nil {
 		panic(err)
@@ -118,21 +123,16 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		if err != nil {
 			panic(err)
 		}
-		bootstrapPeers := make([]peer.AddrInfo, len(dht.DefaultBootstrapPeers))
-		for i, addr := range dht.DefaultBootstrapPeers {
-			peerinfo, _ := peer.AddrInfoFromP2pAddr(addr)
-			bootstrapPeers[i] = *peerinfo
-		}
-		dht, err := dht.New(context.Background(), host, dht.BootstrapPeers(bootstrapPeers...))
+		dht, err := dht.New(context.Background(), host)
 		if err != nil {
 			panic(err)
 		}
 		if err := dht.Bootstrap(context.Background()); err != nil {
 			panic(err)
 		}
-		time.Sleep(1 * time.Second)
-		routingDiscovery := drouting.NewRoutingDiscovery(dht)
-		dutil.Advertise(context.Background(), routingDiscovery, "meet me here vinai")
+		time.Sleep(5 * time.Second)
+		// routingDiscovery := routing.NewRoutingDiscovery(dht)
+		// dutil.Advertise(context.Background(), routingDiscovery, "unanimous-chat-app")
 		return host, dht
 	}
 }
