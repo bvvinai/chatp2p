@@ -136,9 +136,27 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			libp2p.NATPortMap(),
 			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 				idht, err = dht.New(context.Background(), h)
+				if err := idht.Bootstrap(context.Background()); err != nil {
+					panic(err)
+				}
 				return idht, err
 			}),
 			libp2p.EnableNATService(),
+			libp2p.EnableRelayService(),
+			// libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{
+			// 	peer.AddrInfo{
+			// 		ID:    peer.ID("12D3KooWSz5iNCtZSoRo3P9ttc5de7zWeMcz8AQpazTqH4A6Z23h"),
+			// 		Addrs: []ma.Multiaddr{ma.StringCast("/dns4/ams-3.bootstrap.libp2p.io")},
+			// 	},
+			// 	peer.AddrInfo{
+			// 		ID:    peer.ID("QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa"),
+			// 		Addrs: []ma.Multiaddr{ma.StringCast("/dns4/sjc-1.bootstrap.libp2p.io")},
+			// 	},
+			// 	peer.AddrInfo{
+			// 		ID:    peer.ID("QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN"),
+			// 		Addrs: []ma.Multiaddr{ma.StringCast("/dns4/nyc-1.bootstrap.libp2p.io")},
+			// 	},
+			// }),
 		)
 		if err != nil {
 			panic(err)
