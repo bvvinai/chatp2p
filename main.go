@@ -10,6 +10,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
@@ -137,6 +138,15 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 		)
 		if err != nil {
 			panic(err)
+		}
+
+		for _, addr := range dht.DefaultBootstrapPeers {
+			pi, _ := peer.AddrInfoFromP2pAddr(addr)
+			fmt.Println(pi)
+			err := host.Connect(context.Background(), *pi)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 
 		return host
