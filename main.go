@@ -32,27 +32,31 @@ func main() {
 	defer host.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	//connectToPeer(host, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
+	//connectToPeer(host, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
 }
 
-// func connectToPeer(h host.Host, dhti *dht.IpfsDHT, rd *drouter.RoutingDiscovery, peerid string) {
+func connectToPeer(h host.Host, peerid string) {
 
-// 	peerID, err := peer.Decode(peerid)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	peerAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/50805/p2p/" + peerid)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	if err := h.Connect(context.Background(), *peerAddr); err != nil {
-// 		panic(err)
-// 	}
+	peerID, err := peer.Decode(peerid)
+	if err != nil {
+		panic(err)
+	}
+	idht, err := dht.New(context.Background(), h)
+	if err != nil {
+		panic(err)
+	}
+	peerAddr, err := idht.FindPeer(context.Background(), peerID)
+	if err != nil {
+		panic(err)
+	}
+	if err := h.Connect(context.Background(), peerAddr); err != nil {
+		panic(err)
+	}
 
-// 	fmt.Println("Connected to remote peer:", peerid)
-// }
+	fmt.Println("Connected to remote peer:", peerid)
+}
 
 func initHost(db *badger.DB, username string, password string) host.Host {
 
@@ -147,6 +151,12 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			if err != nil {
 				fmt.Println(err)
 			}
+		}
+
+		connectedPeers := host.Network().Peers()
+		fmt.Println("Connected peers:")
+		for _, p := range connectedPeers {
+			fmt.Println(p)
 		}
 
 		return host
