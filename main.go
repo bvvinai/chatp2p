@@ -11,8 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/routing"
-	drouter "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	dutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -29,42 +27,33 @@ func main() {
 	}
 	defer db.Close()
 
-	host, dhti, rd := initHost(db, "bvvinai", "bvvinai@1357")
+	host := initHost(db, "bvvinai", "bvvinai@1357")
 	defer host.Close()
-	defer dhti.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	connectToPeer(host, dhti, rd, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
+	//connectToPeer(host, "12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
 }
 
-func connectToPeer(h host.Host, dhti *dht.IpfsDHT, rd *drouter.RoutingDiscovery, peerid string) {
+// func connectToPeer(h host.Host, dhti *dht.IpfsDHT, rd *drouter.RoutingDiscovery, peerid string) {
 
-	peerChan, err := rd.FindPeers(context.Background(), "libp2p-chatapp")
-	if err != nil {
-		panic(err)
-	}
-	for peer := range peerChan {
-		fmt.Println("Found peer:", peer)
-	}
+// 	peerID, err := peer.Decode(peerid)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	peerAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/50805/p2p/" + peerid)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	if err := h.Connect(context.Background(), *peerAddr); err != nil {
+// 		panic(err)
+// 	}
 
-	// peerID, err := peer.Decode(peerid)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// peerAddr, err := peer.AddrInfoFromString("/ip4/54.209.93.91/tcp/50805/p2p/" + peerid)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if err := h.Connect(context.Background(), *peerAddr); err != nil {
-	// 	panic(err)
-	// }
+// 	fmt.Println("Connected to remote peer:", peerid)
+// }
 
-	// fmt.Println("Connected to remote peer:", peerid)
-}
-
-func initHost(db *badger.DB, username string, password string) (host.Host, *dht.IpfsDHT, *drouter.RoutingDiscovery) {
+func initHost(db *badger.DB, username string, password string) host.Host {
 
 	connmgr, err := connmgr.NewConnManager(
 		100,
@@ -107,7 +96,15 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 			panic(err)
 		}
 
-		host, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/13000"), libp2p.Identity(priv))
+		host, err := libp2p.New(
+			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/12000"),
+			libp2p.Identity(hostKey),
+			libp2p.ConnectionManager(connmgr),
+			libp2p.EnableNATService(),
+			libp2p.NATPortMap(),
+			libp2p.Security(libp2ptls.ID, libp2ptls.New),
+			libp2p.Security(noise.ID, noise.New),
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -121,42 +118,27 @@ func initHost(db *badger.DB, username string, password string) (host.Host, *dht.
 		txn.Set([]byte("priv"), privBytes)
 		txn.Set([]byte("peerid"), []byte(host.ID()))
 		txn.Commit()
-		dht, err := dht.New(context.Background(), host)
-		if err != nil {
-			panic(err)
-		}
-		if err := dht.Bootstrap(context.Background()); err != nil {
-			panic(err)
-		}
-		return host, dht, nil
+
+		return host
 	} else {
-		var dhti *dht.IpfsDHT
+		var idht *dht.IpfsDHT
 		host, err := libp2p.New(
-			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/12000"),
+			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/12000", "/ip4/0.0.0.0/udp/12000/quic"),
 			libp2p.Identity(hostKey),
 			libp2p.ConnectionManager(connmgr),
-			libp2p.EnableNATService(),
-			libp2p.NATPortMap(),
 			libp2p.Security(libp2ptls.ID, libp2ptls.New),
 			libp2p.Security(noise.ID, noise.New),
+			libp2p.NATPortMap(),
 			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-				dhti, err = dht.New(context.Background(), h)
-				if err != nil {
-					return nil, err
-				}
-
-				if err := dhti.Bootstrap(context.Background()); err != nil {
-					panic(err)
-				}
-				return dhti, nil
+				idht, err = dht.New(context.Background(), h)
+				return idht, err
 			}),
+			libp2p.EnableNATService(),
 		)
 		if err != nil {
 			panic(err)
 		}
 
-		routingDiscovery := drouter.NewRoutingDiscovery(dhti)
-		dutil.Advertise(context.Background(), routingDiscovery, "libp2p-chatapp")
-		return host, dhti, routingDiscovery
+		return host
 	}
 }
