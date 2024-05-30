@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
+	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -128,7 +129,6 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 	} else {
 		var idht *dht.IpfsDHT
 		host, err := libp2p.New(
-			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/12000", "/ip4/0.0.0.0/udp/12000/quic"),
 			libp2p.Identity(hostKey),
 			libp2p.ConnectionManager(connmgr),
 			libp2p.Security(libp2ptls.ID, libp2ptls.New),
@@ -143,20 +143,20 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			}),
 			libp2p.EnableNATService(),
 			libp2p.EnableRelayService(),
-			// libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{
-			// 	peer.AddrInfo{
-			// 		ID:    peer.ID("12D3KooWSz5iNCtZSoRo3P9ttc5de7zWeMcz8AQpazTqH4A6Z23h"),
-			// 		Addrs: []ma.Multiaddr{ma.StringCast("/dns4/ams-3.bootstrap.libp2p.io")},
-			// 	},
-			// 	peer.AddrInfo{
-			// 		ID:    peer.ID("QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa"),
-			// 		Addrs: []ma.Multiaddr{ma.StringCast("/dns4/sjc-1.bootstrap.libp2p.io")},
-			// 	},
-			// 	peer.AddrInfo{
-			// 		ID:    peer.ID("QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN"),
-			// 		Addrs: []ma.Multiaddr{ma.StringCast("/dns4/nyc-1.bootstrap.libp2p.io")},
-			// 	},
-			// }),
+			libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{
+				{
+					ID:    peer.ID("12D3KooWSz5iNCtZSoRo3P9ttc5de7zWeMcz8AQpazTqH4A6Z23h"),
+					Addrs: []multiaddr.Multiaddr{multiaddr.StringCast("/dns4/ams-3.bootstrap.libp2p.io")},
+				},
+				{
+					ID:    peer.ID("QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa"),
+					Addrs: []multiaddr.Multiaddr{multiaddr.StringCast("/dns4/sjc-1.bootstrap.libp2p.io")},
+				},
+				{
+					ID:    peer.ID("QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN"),
+					Addrs: []multiaddr.Multiaddr{multiaddr.StringCast("/dns4/nyc-1.bootstrap.libp2p.io")},
+				},
+			}),
 		)
 		if err != nil {
 			panic(err)
