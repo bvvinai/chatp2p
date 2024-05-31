@@ -139,6 +139,7 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			}),
 			libp2p.EnableNATService(),
 			libp2p.EnableRelayService(),
+			libp2p.EnableRelay(),
 		)
 		if err != nil {
 			panic(err)
