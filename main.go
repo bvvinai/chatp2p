@@ -53,7 +53,7 @@ func connectToPeer(host host.Host, peerid string) {
 	// 	}
 	// }
 
-	idht, err := dht.New(context.Background(), h)
+	idht, err := dht.New(context.Background(), host)
 	if err != nil {
 		panic(err)
 	}
