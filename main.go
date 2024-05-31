@@ -157,7 +157,7 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 		connectedPeers := host.Network().Conns()
 		fmt.Println("Connected peers:")
 		for _, p := range connectedPeers {
-			fmt.Println(p.RemoteMultiaddr())
+			fmt.Println(p)
 		}
 
 		return host
