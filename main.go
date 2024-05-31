@@ -37,12 +37,22 @@ func main() {
 	select {}
 }
 
-func connectToPeer(h host.Host, peerid string) {
+func connectToPeer(host host.Host, peerid string) {
 
 	peerID, err := peer.Decode(peerid)
 	if err != nil {
 		panic(err)
 	}
+
+	// for _, p := range host.Peerstore().Peers() {
+	// 	addrs := host.Peerstore().Addrs(p)
+	// 	fmt.Printf("Peer ID: %s\n", p.Pretty())
+	// 	fmt.Println("Addresses:")
+	// 	for _, addr := range addrs {
+	// 		fmt.Printf("  %s\n", addr.String())
+	// 	}
+	// }
+
 	idht, err := dht.New(context.Background(), h)
 	if err != nil {
 		panic(err)
@@ -51,7 +61,7 @@ func connectToPeer(h host.Host, peerid string) {
 	if err != nil {
 		panic(err)
 	}
-	if err := h.Connect(context.Background(), peerAddr); err != nil {
+	if err := host.Connect(context.Background(), peerAddr); err != nil {
 		panic(err)
 	}
 
@@ -152,12 +162,6 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			if err != nil {
 				fmt.Println(err)
 			}
-		}
-
-		connectedPeers := host.Network().Conns()
-		fmt.Println("Connected peers:")
-		for _, p := range connectedPeers {
-			fmt.Println(p)
 		}
 
 		return host
