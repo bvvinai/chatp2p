@@ -15,7 +15,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
-	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -130,9 +129,6 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 		var idht *dht.IpfsDHT
 		host, err := libp2p.New(
 			libp2p.Identity(hostKey),
-			libp2p.ConnectionManager(connmgr),
-			libp2p.Security(libp2ptls.ID, libp2ptls.New),
-			libp2p.Security(noise.ID, noise.New),
 			libp2p.NATPortMap(),
 			libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 				idht, err = dht.New(context.Background(), h)
@@ -143,20 +139,6 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			}),
 			libp2p.EnableNATService(),
 			libp2p.EnableRelayService(),
-			libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{
-				{
-					ID:    peer.ID("12D3KooWSz5iNCtZSoRo3P9ttc5de7zWeMcz8AQpazTqH4A6Z23h"),
-					Addrs: []multiaddr.Multiaddr{multiaddr.StringCast("/dns4/ams-3.bootstrap.libp2p.io")},
-				},
-				{
-					ID:    peer.ID("QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa"),
-					Addrs: []multiaddr.Multiaddr{multiaddr.StringCast("/dns4/sjc-1.bootstrap.libp2p.io")},
-				},
-				{
-					ID:    peer.ID("QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN"),
-					Addrs: []multiaddr.Multiaddr{multiaddr.StringCast("/dns4/nyc-1.bootstrap.libp2p.io")},
-				},
-			}),
 		)
 		if err != nil {
 			panic(err)
@@ -171,10 +153,10 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 			}
 		}
 
-		connectedPeers := host.Network().Peers()
+		connectedPeers := host.Network().Conns()
 		fmt.Println("Connected peers:")
 		for _, p := range connectedPeers {
-			fmt.Println(p)
+			fmt.Println(p.RemoteMultiaddr())
 		}
 
 		return host
