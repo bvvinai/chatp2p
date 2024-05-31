@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
+	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -32,17 +33,17 @@ func main() {
 	defer host.Close()
 	fmt.Println(host.ID())
 	fmt.Println("Listening on : ", host.Addrs())
-	//connectToPeer(host, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
+	connectToPeer(host, "12D3KooWQ484Vs8UEvaAGN7ap7By2sHEkeJMC32DSYxveXgs31Jh")
 
 	select {}
 }
 
 func connectToPeer(host host.Host, peerid string) {
 
-	peerID, err := peer.Decode(peerid)
-	if err != nil {
-		panic(err)
-	}
+	// peerID, err := peer.Decode(peerid)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// for _, p := range host.Peerstore().Peers() {
 	// 	addrs := host.Peerstore().Addrs(p)
@@ -53,19 +54,19 @@ func connectToPeer(host host.Host, peerid string) {
 	// 	}
 	// }
 
-	idht, err := dht.New(context.Background(), host)
-	if err != nil {
-		panic(err)
-	}
-	peerAddr, err := idht.FindPeer(context.Background(), peerID)
-	if err != nil {
-		panic(err)
-	}
-	if err := host.Connect(context.Background(), peerAddr); err != nil {
-		panic(err)
-	}
+	// idht, err := dht.New(context.Background(), host)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// peerAddr, err := idht.FindPeer(context.Background(), peerID)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// if err := host.Connect(context.Background(), peerAddr); err != nil {
+	// 	panic(err)
+	// }
 
-	fmt.Println("Connected to remote peer:", peerid)
+	// fmt.Println("Connected to remote peer:", peerid)
 }
 
 func initHost(db *badger.DB, username string, password string) host.Host {
@@ -163,6 +164,27 @@ func initHost(db *badger.DB, username string, password string) host.Host {
 				fmt.Println(err)
 			}
 		}
+
+		dhtDiscovery := drouting.NewRoutingDiscovery(idht)
+		go func() {
+			for {
+				_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
+				if err != nil {
+					panic(err)
+				}
+
+				peerChan, err := dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
+				if err != nil {
+					panic(err)
+				}
+
+				for peer := range peerChan {
+					fmt.Printf("Discovered peer: %s \n", peer.ID)
+				}
+
+				time.Sleep(5 * time.Second)
+			}
+		}()
 
 		return host
 	}
