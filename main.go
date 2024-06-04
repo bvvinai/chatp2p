@@ -24,7 +24,7 @@ var appPeers <-chan peer.AddrInfo
 func main() {
 
 	initHost("bvvinai", "bvvinai@1357")
-	fmt.Println(hostNode.ID())
+	fmt.Println("This node : ", hostNode.ID())
 	connectToPeer("12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
@@ -131,12 +131,12 @@ func initHost(username string, password string) {
 		for {
 			_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
 			if err != nil {
-				panic(err)
+				fmt.Println("No peers discovered!")
 			}
 
 			appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
 			if err != nil {
-				panic(err)
+				fmt.Println("No peers discovered!")
 			}
 		}
 	}()
