@@ -32,6 +32,7 @@ func main() {
 
 func connectToPeer(peerid string) {
 
+	fmt.Println("Finding peer : ", peerid)
 	peerID, err := peer.Decode(peerid)
 	if err != nil {
 		panic(err)
