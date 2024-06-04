@@ -49,6 +49,10 @@ func connectToPeer(peerid string) {
 	}
 }
 
+func getUser() {
+
+}
+
 func initHost(username string, password string) {
 
 	db, _ = badger.Open(badger.DefaultOptions("./badger"))
@@ -81,43 +85,13 @@ func initHost(username string, password string) {
 		if err != nil {
 			panic(err)
 		}
+
+		hostKey = priv
+
 		privBytes, err := crypto.MarshalPrivateKey(priv)
 		if err != nil {
 			panic(err)
 		}
-
-		hostNode, _ = libp2p.New(
-			libp2p.Identity(hostKey),
-		)
-
-		idht, _ = dht.New(context.Background(), hostNode)
-		if err := idht.Bootstrap(context.Background()); err != nil {
-			panic(err)
-		}
-
-		for _, addr := range dht.DefaultBootstrapPeers {
-			pi, _ := peer.AddrInfoFromP2pAddr(addr)
-			fmt.Println(pi)
-			err := hostNode.Connect(context.Background(), *pi)
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-
-		dhtDiscovery := drouting.NewRoutingDiscovery(idht)
-		go func() {
-			for {
-				_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
-				if err != nil {
-					panic(err)
-				}
-
-				appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
-				if err != nil {
-					panic(err)
-				}
-			}
-		}()
 
 		txn := db.NewTransaction(true)
 		defer txn.Discard()
@@ -127,47 +101,48 @@ func initHost(username string, password string) {
 		txn.Set([]byte("priv"), privBytes)
 		txn.Set([]byte("peerid"), []byte(hostNode.ID()))
 		txn.Commit()
-	} else {
-		hostNode, _ = libp2p.New(
-			libp2p.Identity(hostKey),
-			libp2p.NATPortMap(),
-			libp2p.EnableNATService(),
-			libp2p.EnableRelayService(),
-			libp2p.EnableRelay(),
-		)
-
-		idht, _ = dht.New(context.Background(), hostNode)
-		if err := idht.Bootstrap(context.Background()); err != nil {
-			panic(err)
-		}
-
-		_, err := relayv2.New(hostNode)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, addr := range dht.DefaultBootstrapPeers {
-			pi, _ := peer.AddrInfoFromP2pAddr(addr)
-			fmt.Println(pi)
-			err := hostNode.Connect(context.Background(), *pi)
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-
-		dhtDiscovery := drouting.NewRoutingDiscovery(idht)
-		go func() {
-			for {
-				_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
-				if err != nil {
-					panic(err)
-				}
-
-				appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
-				if err != nil {
-					panic(err)
-				}
-			}
-		}()
 	}
+
+	hostNode, _ = libp2p.New(
+		libp2p.Identity(hostKey),
+		libp2p.NATPortMap(),
+		libp2p.EnableNATService(),
+		libp2p.EnableRelayService(),
+		libp2p.EnableRelay(),
+	)
+
+	idht, _ = dht.New(context.Background(), hostNode)
+	if err := idht.Bootstrap(context.Background()); err != nil {
+		panic(err)
+	}
+
+	_, err := relayv2.New(hostNode)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, addr := range dht.DefaultBootstrapPeers {
+		pi, _ := peer.AddrInfoFromP2pAddr(addr)
+		fmt.Println(pi)
+		err := hostNode.Connect(context.Background(), *pi)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	dhtDiscovery := drouting.NewRoutingDiscovery(idht)
+	go func() {
+		for {
+			_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
+			if err != nil {
+				panic(err)
+			}
+
+			appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
+			if err != nil {
+				panic(err)
+			}
+		}
+	}()
+
 }
