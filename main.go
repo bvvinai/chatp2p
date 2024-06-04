@@ -49,10 +49,6 @@ func connectToPeer(peerid string) {
 	}
 }
 
-func getUser() {
-
-}
-
 func initHost(username string, password string) {
 
 	db, _ = badger.Open(badger.DefaultOptions("./badger"))
