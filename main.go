@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"golang.org/x/crypto/bcrypt"
@@ -24,16 +25,27 @@ func main() {
 
 	initHost("bvvinai", "bvvinai@1357")
 	fmt.Println(hostNode.ID())
-	connectToPeers()
+	connectToPeer("12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
 
 	select {}
 }
 
-func connectToPeers() {
+func connectToPeer(peerid string) {
 
-	fmt.Println("Here : ")
-	for peer := range appPeers {
-		fmt.Println(peer.ID)
+	peerID, err := peer.Decode(peerid)
+	if err != nil {
+		panic(err)
+	}
+	peerAddrInfo, err := idht.FindPeer(context.Background(), peerID)
+	if err != nil {
+		fmt.Println("Could not find peer!")
+	}
+
+	connerr := hostNode.Connect(context.Background(), peerAddrInfo)
+	if connerr != nil {
+		fmt.Println("No connection established!")
+	} else {
+		fmt.Println("Connected to node : ", peerid)
 	}
 }
 
@@ -155,7 +167,6 @@ func initHost(username string, password string) {
 				if err != nil {
 					panic(err)
 				}
-
 			}
 		}()
 	}
