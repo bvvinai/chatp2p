@@ -11,21 +11,21 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
-
-	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var hostNode host.Host
 var idht *dht.IpfsDHT
 var db *badger.DB
-var appPeers <-chan peer.AddrInfo
+
+//var appPeers <-chan peer.AddrInfo
 
 func main() {
 
 	initHost("bvvinai", "bvvinai@1357")
 	fmt.Println("This node : ", hostNode.ID())
 	connectToPeer("12D3KooWHeAvNK221WW7heHbrv6sgQf1FoPmucN2gbFTkCd2nt8T")
+	connectToPeer("12D3KooWQFeTgsRRyRqeLGVNC76HTpvyJTZKvNSQEnBbxiLNqNGT")
 
 	select {}
 }
@@ -67,7 +67,6 @@ func initHost(username string, password string) {
 	})
 
 	if get_err != nil || hostKey == nil {
-		fmt.Println(get_err)
 
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -117,19 +116,21 @@ func initHost(username string, password string) {
 		}
 	}
 
-	dhtDiscovery := drouting.NewRoutingDiscovery(idht)
-	go func() {
-		for {
-			_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
-			if err != nil {
-				panic(err)
-			}
+	//broadcaster := crdt.NewPubsubBroadcaster(hostNode)
 
-			appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
-			if err != nil {
-				panic(err)
-			}
-		}
-	}()
+	// dhtDiscovery := drouting.NewRoutingDiscovery(idht)
+	// go func() {
+	// 	for {
+	// 		_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+
+	// 		appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }()
 
 }
