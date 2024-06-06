@@ -39,9 +39,8 @@ func connectToPeer(peerid string) {
 	}
 	peerAddrInfo, err := idht.FindPeer(context.Background(), peerID)
 	if err != nil {
-		fmt.Println("Could not find peer!")
+		fmt.Println(err)
 	}
-
 	connerr := hostNode.Connect(context.Background(), peerAddrInfo)
 	if connerr != nil {
 		fmt.Println("No connection established!")
@@ -108,6 +107,9 @@ func initHost(username string, password string) {
 		libp2p.EnableRelay(),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 			idht, _ = dht.New(context.Background(), h)
+			if err := idht.Bootstrap(context.Background()); err != nil {
+				panic(err)
+			}
 			return idht, nil
 		}),
 	)
