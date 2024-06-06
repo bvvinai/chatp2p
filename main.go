@@ -24,9 +24,9 @@ func main() {
 
 	initHost("bvvinai", "bvvinai@1357")
 	fmt.Println("This node : ", hostNode.ID())
-	connectToPeer("12D3KooWHeAvNK221WW7heHbrv6sgQf1FoPmucN2gbFTkCd2nt8T")
-	connectToPeer("12D3KooWQFeTgsRRyRqeLGVNC76HTpvyJTZKvNSQEnBbxiLNqNGT")
-	connectToPeer("12D3KooWJTxJUQwcYaq3n6AeUpD5GiTBohAPLL9KTxgxwWQSiANt")
+	go connectToPeer("12D3KooWHeAvNK221WW7heHbrv6sgQf1FoPmucN2gbFTkCd2nt8T")
+	go connectToPeer("12D3KooWQFeTgsRRyRqeLGVNC76HTpvyJTZKvNSQEnBbxiLNqNGT")
+	go connectToPeer("12D3KooWJTxJUQwcYaq3n6AeUpD5GiTBohAPLL9KTxgxwWQSiANt")
 	select {}
 }
 
