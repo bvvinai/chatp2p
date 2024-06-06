@@ -1,136 +1,33 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-
-	badger "github.com/dgraph-io/badger/v4"
-	"github.com/libp2p/go-libp2p"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/routing"
-	"golang.org/x/crypto/bcrypt"
+	"net/http"
 )
-
-var hostNode host.Host
-var idht *dht.IpfsDHT
-var db *badger.DB
-
-//var appPeers <-chan peer.AddrInfo
 
 func main() {
 
-	initHost("bvvinai", "bvvinai@1357")
-	fmt.Println("This node : ", hostNode.ID())
-	go connectToPeer("12D3KooWHeAvNK221WW7heHbrv6sgQf1FoPmucN2gbFTkCd2nt8T")
-	go connectToPeer("12D3KooWQFeTgsRRyRqeLGVNC76HTpvyJTZKvNSQEnBbxiLNqNGT")
-	go connectToPeer("12D3KooWJTxJUQwcYaq3n6AeUpD5GiTBohAPLL9KTxgxwWQSiANt")
-	select {}
+	http.HandleFunc("/inithost/", handleInitHost)
+	http.HandleFunc("/connect/", handleConnectPeer)
+	fmt.Println("Server listening on port 8080...")
+	http.ListenAndServe(":8080", nil)
+	// go connectToPeer("12D3KooWHeAvNK221WW7heHbrv6sgQf1FoPmucN2gbFTkCd2nt8T")
+	// go connectToPeer("12D3KooWQFeTgsRRyRqeLGVNC76HTpvyJTZKvNSQEnBbxiLNqNGT")
 }
 
-func connectToPeer(peerid string) {
+func handleInitHost(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("Finding peer : ", peerid)
-	peerID, err := peer.Decode(peerid)
-	if err != nil {
-		panic(err)
-	}
-	peerAddrInfo, err := idht.FindPeer(context.Background(), peerID)
-	if err != nil {
-		fmt.Println(err)
-	}
-	connerr := hostNode.Connect(context.Background(), peerAddrInfo)
-	if connerr != nil {
-		fmt.Println("No connection established!")
-	} else {
-		fmt.Println("Connected to node : ", peerid)
-	}
+	response := initHost("bvvinai", "bvvinai@1357")
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
-func initHost(username string, password string) {
+func handleConnectPeer(w http.ResponseWriter, r *http.Request) {
+	peerid := r.URL.Query().Get("peerid")
+	response := connectToPeer(peerid)
 
-	db, _ = badger.Open(badger.DefaultOptions("./badger"))
-
-	var hostKey crypto.PrivKey
-	get_err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("priv"))
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			hostKey, err = crypto.UnmarshalPrivateKey(val)
-			return nil
-		})
-		return err
-	})
-
-	if get_err != nil || hostKey == nil {
-
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			panic(err)
-		}
-
-		priv, _, err := crypto.GenerateKeyPair(
-			crypto.Ed25519,
-			-1,
-		)
-		if err != nil {
-			panic(err)
-		}
-
-		hostKey = priv
-
-		privBytes, err := crypto.MarshalPrivateKey(priv)
-		if err != nil {
-			panic(err)
-		}
-
-		txn := db.NewTransaction(true)
-		defer txn.Discard()
-
-		txn.Set([]byte("username"), []byte(username))
-		txn.Set([]byte("password"), hashedPassword)
-		txn.Set([]byte("priv"), privBytes)
-		txn.Commit()
-	}
-
-	hostNode, _ = libp2p.New(
-		libp2p.Identity(hostKey),
-		libp2p.NATPortMap(),
-		libp2p.EnableNATService(),
-		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			idht, _ = dht.New(context.Background(), h)
-			return idht, nil
-		}),
-	)
-
-	for _, addr := range dht.DefaultBootstrapPeers {
-		pi, _ := peer.AddrInfoFromP2pAddr(addr)
-		fmt.Println(pi)
-		err := hostNode.Connect(context.Background(), *pi)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-
-	//broadcaster := crdt.NewPubsubBroadcaster(hostNode)
-
-	// dhtDiscovery := drouting.NewRoutingDiscovery(idht)
-	// go func() {
-	// 	for {
-	// 		_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-
-	// 		appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 	}
-	// }()
-
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
