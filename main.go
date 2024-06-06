@@ -10,9 +10,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/routing"
 
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -103,20 +103,15 @@ func initHost(username string, password string) {
 	hostNode, _ = libp2p.New(
 		libp2p.Identity(hostKey),
 		libp2p.NATPortMap(),
+		libp2p.DefaultTransports,
 		libp2p.EnableNATService(),
 		libp2p.EnableRelayService(),
 		libp2p.EnableRelay(),
+		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
+			idht, _ = dht.New(context.Background(), h)
+			return idht, nil
+		}),
 	)
-
-	idht, _ = dht.New(context.Background(), hostNode)
-	if err := idht.Bootstrap(context.Background()); err != nil {
-		panic(err)
-	}
-
-	_, err := relayv2.New(hostNode)
-	if err != nil {
-		panic(err)
-	}
 
 	for _, addr := range dht.DefaultBootstrapPeers {
 		pi, _ := peer.AddrInfoFromP2pAddr(addr)
@@ -132,12 +127,12 @@ func initHost(username string, password string) {
 		for {
 			_, err := dhtDiscovery.Advertise(context.Background(), "chatapp-bvvinai")
 			if err != nil {
-				fmt.Println("No peers discovered!")
+				panic(err)
 			}
 
 			appPeers, err = dhtDiscovery.FindPeers(context.Background(), "chatapp-bvvinai")
 			if err != nil {
-				fmt.Println("No peers discovered!")
+				panic(err)
 			}
 		}
 	}()
