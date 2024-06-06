@@ -101,15 +101,9 @@ func initHost(username string, password string) {
 	hostNode, _ = libp2p.New(
 		libp2p.Identity(hostKey),
 		libp2p.NATPortMap(),
-		libp2p.DefaultTransports,
 		libp2p.EnableNATService(),
-		libp2p.EnableRelayService(),
-		libp2p.EnableRelay(),
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
 			idht, _ = dht.New(context.Background(), h)
-			if err := idht.Bootstrap(context.Background()); err != nil {
-				panic(err)
-			}
 			return idht, nil
 		}),
 	)
