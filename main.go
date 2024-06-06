@@ -25,7 +25,7 @@ func main() {
 
 	initHost("bvvinai", "bvvinai@1357")
 	fmt.Println("This node : ", hostNode.ID())
-	connectToPeer("12D3KooWQfBE9wUrCNvk81vw8a3vho8sBKG9DRoA9WwKSd9bUNGW")
+	connectToPeer("12D3KooWHeAvNK221WW7heHbrv6sgQf1FoPmucN2gbFTkCd2nt8T")
 
 	select {}
 }
@@ -96,7 +96,6 @@ func initHost(username string, password string) {
 		txn.Set([]byte("username"), []byte(username))
 		txn.Set([]byte("password"), hashedPassword)
 		txn.Set([]byte("priv"), privBytes)
-		txn.Set([]byte("peerid"), []byte(hostNode.ID()))
 		txn.Commit()
 	}
 
