@@ -1,0 +1,12 @@
+version: '3'
+services:
+  node1:
+    restart: unless-stopped
+    build: .
+    ports:
+      - "8080:8080"
+  node2:
+    restart: unless-stopped
+    build: .
+    ports:
+      - "8081:8080"
